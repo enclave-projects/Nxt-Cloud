@@ -1,28 +1,74 @@
 {
   "expo": {
-    "name": "nxt-cloud",
+    "name": "Nxt Cloud",
     "slug": "nxt-cloud",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "version": "1.1.0",
+    "orientation": "default",
+    "icon": "./assets/nxt-logo-nobg.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/nxt-cloud-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Allow NXT Cloud to use Face ID for authentication.",
+        "NSMicrophoneUsageDescription": "This app does not require microphone access."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/nxt-logo-nobg.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "package": "com.enclave_projects.nxt_cloud"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/nxt-logo-nobg.png"
+    },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow NXT Cloud to use Face ID for authentication.",
+          "fingerprintPermission": "Allow NXT Cloud to use fingerprint for authentication."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/nxt-logo-nobg.png",
+          "color": "#2563eb",
+          "sounds": [
+            "./assets/notification_sound.wav"
+          ],
+          "mode": "production"
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/nxt-logo-nobg.png",
+      "color": "#2563eb",
+      "androidMode": "default",
+      "androidCollapsedTitle": "NXT Cloud",
+      "iosDisplayInForeground": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6becc5be-6583-46a3-8381-b708313e8051"
+      }
+    },
+    "owner": "pranjalsharma_edge"
   }
 }

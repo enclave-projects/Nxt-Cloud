@@ -34,3 +34,16 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Additional build folders
+android/app/build/
+android/build/
+ios/build/
+
+# Expo shared files
+.expo-shared/
+expo/.expo-shared/
+
+# Exclude package files from being pushed
+package.json
+package-lock.json
