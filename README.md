@@ -54,3 +54,5 @@ This project is open source and welcomes your customization. Anyone can rebuild 
 
 ## License
 This project is licensed under the MIT License.
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/enclave-projects/Nxt-Cloud?utm_source=oss&utm_medium=github&utm_campaign=enclave-projects%2FNxt-Cloud&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
