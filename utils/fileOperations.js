@@ -57,14 +57,31 @@ export const listFiles = async (prefix = '') => {
       Prefix: prefix,
       Delimiter: '/',
     });
-    
+
     const response = await r2Client.send(command);
     const contents = response.Contents || [];
     const commonPrefixes = response.CommonPrefixes || [];
-    
+
+    const folders = await Promise.all(
+      commonPrefixes.map(async (item) => {
+        const folderPrefix = item.Prefix;
+        const { files: folderFiles } = await listFiles(folderPrefix); // Recursively list files in the folder
+        const totalSize = folderFiles.reduce((sum, file) => sum + (file.Size || 0), 0);
+        return {
+          id: folderPrefix,
+          name: folderPrefix.split('/').slice(-2, -1)[0], // Extract folder name
+          fileCount: folderFiles.length,
+          totalSize,
+          lastModified: folderFiles.length > 0 ? folderFiles[0].LastModified : null, // Use the first file's LastModified as a proxy
+        };
+      })
+    );
+
     return {
-      files: contents.filter(item => !item.Key.endsWith('/')),
-      folders: [...commonPrefixes, ...contents.filter(item => item.Key.endsWith('/'))]
+      files: contents
+        .filter(item => item.Key && !item.Key.endsWith('/')) // Ensure valid keys and exclude folders
+        .map(item => ({ Key: item.Key, Size: item.Size, LastModified: item.LastModified })),
+      folders,
     };
   } catch (error) {
     console.error('List files error:', error);
@@ -74,11 +91,30 @@ export const listFiles = async (prefix = '') => {
 
 export const deleteFile = async (key) => {
   try {
+    if (!key) {
+      throw new Error('Key is undefined or empty');
+    }
+
+    // Check if the key represents a folder (ends with '/')
+    if (key.endsWith('/')) {
+      // List all objects within the folder
+      const { files, folders } = await listFiles(key);
+
+      // Recursively delete all files and subfolders
+      for (const file of files) {
+        await deleteFile(file.Key);
+      }
+      for (const folder of folders) {
+        await deleteFile(folder.id);
+      }
+    }
+
+    // Delete the folder or file itself
     const command = new DeleteObjectCommand({
       Bucket: R2_CONFIG.bucket,
       Key: key,
     });
-    
+
     await r2Client.send(command);
   } catch (error) {
     console.error('Delete error:', error);
@@ -130,11 +166,15 @@ export const getPreSignedUrl = async (key) => {
 
 export const createFolder = async (folderName, currentPath = '') => {
   try {
-    const key = currentPath ? `${currentPath}${folderName}/` : `${uuidv4()}-${folderName}/`;
+    if (!folderName.trim()) {
+      throw new Error('Folder name cannot be empty');
+    }
+
+    const key = currentPath ? `${currentPath}${folderName}/` : `${folderName}/`;
     const command = new PutObjectCommand({
       Bucket: R2_CONFIG.bucket,
       Key: key,
-      Body: '',
+      Body: '', // Empty body to create a folder
     });
     await r2Client.send(command);
     return key;
@@ -162,6 +202,41 @@ export const moveFile = async (sourceKey, targetFolder) => {
     return newKey;
   } catch (error) {
     console.error('Move file error:', error);
+    throw error;
+  }
+};
+
+export const renameFileOrFolder = async (oldKey, newKey) => {
+  try {
+    if (oldKey.endsWith('/')) {
+      // If it's a folder, recursively rename all files and subfolders
+      const { files, folders } = await listFiles(oldKey);
+
+      // Rename all files in the folder
+      for (const file of files) {
+        const newFileKey = file.Key.replace(oldKey, newKey);
+        await renameFileOrFolder(file.Key, newFileKey);
+      }
+
+      // Rename all subfolders
+      for (const folder of folders) {
+        const newFolderKey = folder.id.replace(oldKey, newKey);
+        await renameFileOrFolder(folder.id, newFolderKey);
+      }
+    }
+
+    // Rename the folder or file itself
+    const copyCommand = new CopyObjectCommand({
+      Bucket: R2_CONFIG.bucket,
+      CopySource: `${R2_CONFIG.bucket}/${oldKey}`,
+      Key: newKey,
+    });
+    await r2Client.send(copyCommand);
+
+    // Delete the old key
+    await deleteFile(oldKey);
+  } catch (error) {
+    console.error('Rename error:', error);
     throw error;
   }
 };

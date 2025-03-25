@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, Switch, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Switch, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { listFiles } from '../utils/fileOperations';
 import { calculateStorageStats } from '../utils/storageStats';
@@ -7,6 +7,11 @@ import { COLORS, SHADOWS } from '../constants/theme';
 import { AuthContext } from '../context/AuthContext';
 import { showNotification } from '../utils/notifications';
 import * as ScreenCapture from 'expo-screen-capture';
+import { testNetworkSpeed } from '../utils/networkSpeed';
+import { LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const SettingSection = ({ title, children }) => (
   <View style={styles.section}>
@@ -23,6 +28,10 @@ export default function SettingsScreen() {
     allocatedStorage: '0 GB',
   });
   const [appProtectionEnabled, setAppProtectionEnabled] = useState(false);
+  const [networkResults, setNetworkResults] = useState(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [liveGraphData, setLiveGraphData] = useState({ labels: [], datasets: [{ data: [] }] });
+  const [testResults, setTestResults] = useState(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -88,6 +97,29 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleTestNetwork = async () => {
+    setIsTesting(true);
+    setLiveGraphData({ labels: [], datasets: [{ data: [] }] }); // Reset graph data
+    setTestResults(null); // Clear previous results
+
+    try {
+      await testNetworkSpeed((progress) => {
+        setLiveGraphData((prevData) => {
+          const newLabels = [...prevData.labels, progress.type];
+          const newData = [...prevData.datasets[0].data, progress.speed || progress.value];
+          return { labels: newLabels, datasets: [{ data: newData }] };
+        });
+      }).then((results) => {
+        setTestResults(results); // Save final results for the table
+      });
+    } catch (error) {
+      console.error('Network test failed:', error);
+      alert('Failed to test network speed.');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <SettingSection title="Security">
@@ -124,9 +156,76 @@ export default function SettingsScreen() {
         </View>
       </SettingSection>
 
+      <SettingSection title="Test Network">
+        <View style={styles.settingItem}>
+          <Text style={styles.settingText}>Network Speed Test</Text>
+          <TouchableOpacity style={styles.button} onPress={handleTestNetwork} disabled={isTesting}>
+            <Text style={styles.buttonText}>{isTesting ? 'Testing...' : 'Start Test'}</Text>
+          </TouchableOpacity>
+        </View>
+        {liveGraphData.labels.length > 0 && (
+          <>
+            <Text style={styles.graphTitle}>Live Network Test</Text>
+            <LineChart
+              data={liveGraphData}
+              width={SCREEN_WIDTH - 32}
+              height={220}
+              chartConfig={{
+                backgroundColor: COLORS.surface,
+                backgroundGradientFrom: COLORS.surface,
+                backgroundGradientTo: COLORS.surface,
+                decimalPlaces: 2,
+                color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(15, 23, 42, ${opacity})`,
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '6',
+                  strokeWidth: '2',
+                  stroke: COLORS.primary,
+                },
+              }}
+              style={{
+                marginVertical: 16,
+                borderRadius: 16,
+              }}
+            />
+          </>
+        )}
+        {testResults && (
+          <View style={styles.table}>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableHeader}>Metric</Text>
+              <Text style={styles.tableHeader}>Value</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Server</Text>
+              <Text style={styles.tableCell}>{testResults.serverName}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Download Speed</Text>
+              <Text style={styles.tableCell}>{testResults.downloadSpeed.toFixed(2)} Mbps</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Upload Speed</Text>
+              <Text style={styles.tableCell}>{testResults.uploadSpeed.toFixed(2)} Mbps</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Latency</Text>
+              <Text style={styles.tableCell}>{testResults.latency} ms</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Jitter</Text>
+              <Text style={styles.tableCell}>{testResults.jitter} ms</Text>
+            </View>
+          </View>
+        )}
+      </SettingSection>
+
       <SettingSection title="About">
         <View style={styles.aboutContainer}>
-          <Text style={styles.aboutText}>NXT Cloud v1.0.0</Text>
+          <Text style={styles.aboutText}>NXT Cloud v1.1.0</Text>
           <Text style={styles.aboutDescription}>
             A personal cloud storage solution for managing your files securely.
           </Text>
@@ -182,6 +281,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  button: {
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.small,
+  },
+  buttonText: {
+    color: COLORS.surface,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  graphTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  table: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  tableHeader: {
+    fontWeight: '600',
+    color: COLORS.text,
+    flex: 1,
+  },
+  tableCell: {
+    color: COLORS.textSecondary,
+    flex: 1,
   },
   aboutContainer: {
     backgroundColor: COLORS.surface,

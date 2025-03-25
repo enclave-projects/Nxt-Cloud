@@ -8,7 +8,8 @@ export const FileActionMenu = ({
   onDelete, 
   onDownload, 
   onPreview, 
-  onMove,
+  onMove, 
+  onRename, // New prop for renaming
   fileName 
 }) => {
   const canPreview = fileName && /\.(jpg|jpeg|png|gif|mp4|webm|mov)$/i.test(fileName);
@@ -30,6 +31,9 @@ export const FileActionMenu = ({
           )}
           <TouchableOpacity style={styles.menuItem} onPress={onMove}>
             <Text style={styles.menuText}>Move</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={onRename}>
+            <Text style={styles.menuText}>Rename</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={onDownload}>
             <Text style={styles.menuText}>Download</Text>

@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, TextInput, FlatList, TouchableOpacity, Text, StyleSheet, Alert, Modal } from 'react-native';
 import { COLORS, SHADOWS } from '../constants/theme';
 import * as DocumentPicker from 'expo-document-picker';
-import { uploadFile, listFiles, deleteFile, downloadFile, getPreSignedUrl, createFolder, moveFile } from '../utils/fileOperations';
+import { uploadFile, listFiles, deleteFile, downloadFile, getPreSignedUrl, createFolder, moveFile, renameFileOrFolder } from '../utils/fileOperations';
 import { ProgressBar } from '../components/ProgressBar';
 import { FileActionMenu } from '../components/FileActionMenu';
 import { FilePreview } from '../components/FilePreview';
@@ -15,6 +15,15 @@ const getDisplayFileName = (key) => {
   // Check if the key contains a UUID pattern (8-4-4-4-12 format)
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
   return key.replace(uuidPattern, '');
+};
+
+const formatBytes = (bytes, decimals = 2) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
 export default function HomeScreen({ navigation }) {
@@ -34,6 +43,9 @@ export default function HomeScreen({ navigation }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [currentUploadController, setCurrentUploadController] = useState(null);
+  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [renameModalVisible, setRenameModalVisible] = useState(false);
+  const [renameInput, setRenameInput] = useState('');
 
   const currentPath = folderStack.length ? folderStack[folderStack.length - 1] : '';
 
@@ -107,7 +119,7 @@ export default function HomeScreen({ navigation }) {
     setUploadProgress(null);
     setUploadQueue([]);
     setCurrentUploadController(null);
-    fetchFiles();
+    fetchFiles(currentPath);
   };
 
   const cancelUpload = async () => {
@@ -122,32 +134,41 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async (path) => {
+    setIsLoading(true); // Show loading indicator
     try {
-      const { files: filesList, folders: foldersList } = await listFiles(currentPath);
-      
-      const processedFiles = filesList.map(file => ({
-        id: file.Key,
-        name: getDisplayFileName(file.Key.replace(currentPath, '')),
-        size: file.Size,
-        lastModified: file.LastModified,
-        isFolder: false
-      }));
+      const { files: filesList, folders: foldersList } = await listFiles(path);
 
-      const processedFolders = foldersList.map(folder => ({
-        id: folder.Prefix || folder.Key,
-        name: getDisplayFileName((folder.Prefix || folder.Key).replace(currentPath, '')),
-        lastModified: folder.LastModified,
-        isFolder: true
-      }));
+      const processedFiles = filesList
+        .filter(file => file.Key) // Ensure Key is valid
+        .map(file => ({
+          id: file.Key,
+          name: getDisplayFileName(file.Key.replace(path, '')),
+          size: file.Size,
+          lastModified: file.LastModified,
+          isFolder: false,
+        }));
+
+      const processedFolders = foldersList
+        .filter(folder => folder.id) // Ensure id (Prefix) is valid
+        .map(folder => ({
+          id: folder.id,
+          name: getDisplayFileName(folder.id.replace(path, '')),
+          fileCount: folder.fileCount, // Corrected property assignment
+          totalSize: folder.totalSize, // Corrected property assignment
+          lastModified: folder.lastModified,
+          isFolder: true,
+        }));
 
       setFolders(processedFolders);
       setFiles(processedFiles);
     } catch (error) {
       console.error('Error fetching files:', error);
       alert('Failed to fetch files');
+    } finally {
+      setIsLoading(false); // Hide loading indicator
     }
-  };
+  }, []);
 
   const handleLongPress = (file) => {
     setSelectedFile(file);
@@ -157,7 +178,7 @@ export default function HomeScreen({ navigation }) {
   const handleDelete = async () => {
     try {
       await deleteFile(selectedFile.id);
-      await fetchFiles();
+      await fetchFiles(currentPath);
       setMenuVisible(false);
       alert('File deleted successfully');
     } catch (error) {
@@ -198,7 +219,7 @@ export default function HomeScreen({ navigation }) {
     }
     try {
       await createFolder(newFolderName.trim(), currentPath);
-      await fetchFiles();
+      await fetchFiles(currentPath);
       await showNotification('Success', 'Folder created successfully');
       setFolderModalVisible(false);
       setNewFolderName('');
@@ -227,7 +248,7 @@ export default function HomeScreen({ navigation }) {
     if (targetFolder !== undefined) {
       try {
         await moveFile(selectedFile.id, targetFolder);
-        await fetchFiles();
+        await fetchFiles(currentPath);
         setMenuVisible(false);
         await showNotification('Success', 'File moved successfully');
       } catch (error) {
@@ -236,25 +257,42 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const handleRename = async () => {
+    if (!renameInput.trim()) {
+      alert('Please enter a valid name');
+      return;
+    }
+
+    try {
+      const newKey = `${currentPath}${renameInput}${selectedFile.isFolder ? '/' : ''}`;
+      await renameFileOrFolder(selectedFile.id, newKey);
+      await fetchFiles(currentPath);
+      setRenameModalVisible(false);
+      setSelectedFile(null);
+      alert('Renamed successfully');
+    } catch (error) {
+      console.error('Rename error:', error);
+      alert('Failed to rename');
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchFiles();
+    await fetchFiles(currentPath);
     setRefreshing(false);
-  }, []);
+  }, [currentPath, fetchFiles]);
 
   const enterFolder = (folderId) => {
     setFolderStack(prevStack => [...prevStack, folderId]);
-    fetchFiles();
   };
 
   const goBackFolder = () => {
     setFolderStack(prevStack => prevStack.slice(0, -1));
-    fetchFiles();
   };
 
-  React.useEffect(() => {
-    fetchFiles();
-  }, [folderStack]);
+  useEffect(() => {
+    fetchFiles(currentPath);
+  }, [currentPath, fetchFiles]);
 
   // Add filtered data using useMemo
   const filteredData = useMemo(() => {
@@ -332,43 +370,55 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredData}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.fileItem}
-            onPress={() => {
-              if (item.isFolder) {
-                enterFolder(item.id);
-              }
-            }}
-            onLongPress={() => handleLongPress(item)}
-            delayLongPress={500}
-          >
-            <View style={styles.fileDetails}>
-              <View style={styles.fileNameContainer}>
-                <MaterialIcons 
-                  name={item.isFolder ? "folder" : "insert-drive-file"} 
-                  size={24} 
-                  color={item.isFolder ? COLORS.primary : COLORS.textSecondary} 
-                  style={styles.fileIcon}
-                />
-                <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
-                  {item.name}
-                </Text>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredData}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.fileItem}
+              onPress={() => {
+                if (item.isFolder) {
+                  enterFolder(item.id);
+                }
+              }}
+              onLongPress={() => handleLongPress(item)}
+              delayLongPress={500}
+            >
+              <View style={styles.fileDetails}>
+                <View style={styles.fileNameContainer}>
+                  <MaterialIcons 
+                    name={item.isFolder ? "folder" : "insert-drive-file"} 
+                    size={24} 
+                    color={item.isFolder ? COLORS.primary : COLORS.textSecondary} 
+                    style={styles.fileIcon}
+                  />
+                  <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
+                    {item.name}
+                  </Text>
+                </View>
+                {item.isFolder ? (
+                  <Text style={styles.fileInfo}>
+                    {item.fileCount} files • {formatBytes(item.totalSize)} •{' '}
+                    {item.lastModified ? new Date(item.lastModified).toLocaleDateString() : 'Unknown Date'}
+                  </Text>
+                ) : (
+                  <Text style={styles.fileInfo}>
+                    Size: {formatBytes(item.size)} • {new Date(item.lastModified).toLocaleDateString()}
+                  </Text>
+                )}
               </View>
-              <Text style={styles.fileInfo}>
-                {!item.isFolder && `Size: ${(item.size / 1024).toFixed(2)} KB • `}
-                {new Date(item.lastModified).toLocaleDateString()}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        onRefresh={onRefresh} // <-- Added pull-to-refresh callback
-        refreshing={refreshing} // <-- Added refreshing state
-      />
+            </TouchableOpacity>
+          )}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          onRefresh={onRefresh} // <-- Added pull-to-refresh callback
+          refreshing={refreshing} // <-- Added refreshing state
+        />
+      )}
       
       <FileActionMenu
         isVisible={menuVisible}
@@ -377,6 +427,11 @@ export default function HomeScreen({ navigation }) {
         onDownload={handleDownload}
         onPreview={handlePreview}
         onMove={handleMove}
+        onRename={() => {
+          setRenameInput(selectedFile.name);
+          setRenameModalVisible(true);
+          setMenuVisible(false);
+        }}
         fileName={selectedFile?.name}
       />
       
@@ -422,6 +477,35 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity onPress={submitFolderCreation} style={folderStyles.modalButton}>
                 <Text style={folderStyles.modalButtonText}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rename Modal */}
+      <Modal
+        visible={renameModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setRenameModalVisible(false)}
+      >
+        <View style={folderStyles.modalOverlay}>
+          <View style={folderStyles.modalContainer}>
+            <Text style={folderStyles.modalTitle}>Rename</Text>
+            <TextInput
+              style={folderStyles.modalInput}
+              placeholder="Enter new name"
+              placeholderTextColor={COLORS.textSecondary}
+              value={renameInput}
+              onChangeText={setRenameInput}
+            />
+            <View style={folderStyles.modalButtons}>
+              <TouchableOpacity onPress={() => setRenameModalVisible(false)} style={folderStyles.modalButton}>
+                <Text style={folderStyles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleRename} style={folderStyles.modalButton}>
+                <Text style={folderStyles.modalButtonText}>Rename</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -573,5 +657,14 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
 });

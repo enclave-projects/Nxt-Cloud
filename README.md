@@ -8,12 +8,17 @@ A personal cloud storage solution built with Expo and React Native.
 - Folder navigation
 - Device authentication and app protection (prevents screen capture when enabled)
 - Notifications integration
+- **New in v1.5.0**:
+  - Network speed test with live graph and detailed results
+  - Fixed folder navigation bugs for smoother user experience
+  - Improved overall app performance and responsiveness
+  - Enhanced security with stricter app protection and device authentication
 
 ## Folder Structure
 - **/assets**  
   Contains images and sound assets, e.g., `nxt-cloud-logo.png`, `nxt-logo-nobg.png`, `notification_sound.wav`.
 - **/components**  
-  Reusable UI components like `ProgressBar.js`, `FileActionMenu.js`, `FilePreview.js`, and `StorageGraph.js`.
+  Reusable UI components like `ProgressBar.js`, `FileActionMenu.js`, `FilePreview.js`, `StorageGraph.js`, and more.
 - **/config**  
   Configuration files such as `r2Config.js` for Cloudflare R2 settings.
 - **/context**  
@@ -21,7 +26,7 @@ A personal cloud storage solution built with Expo and React Native.
 - **/screens**  
   Application screens including `LoginScreen.js`, `HomeScreen.js`, `SettingsScreen.js`, and (potentially) `CameraScreen.js`.
 - **/utils**  
-  Utility functions for file operations (`fileOperations.js`), notifications (`notifications.js`), and storage statistics (`storageStats.js`).
+  Utility functions for file operations (`fileOperations.js`), notifications (`notifications.js`), network speed testing (`networkSpeed.js`), and storage statistics (`storageStats.js`).
 - **/constants**  
   Theme and styling constants defined in `theme.js`.
 - **App.js**  
@@ -29,20 +34,20 @@ A personal cloud storage solution built with Expo and React Native.
 
 ## Setup
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/enclave-projects/Nxt-Cloud.git
    ```
 2. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
    or
-   ```
+   ```bash
    yarn install
    ```
 3. Configure any required environment variables.
 4. Start the development server with:
-   ```
+   ```bash
    expo start
    ```
 
