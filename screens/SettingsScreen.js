@@ -225,7 +225,7 @@ export default function SettingsScreen() {
 
       <SettingSection title="About">
         <View style={styles.aboutContainer}>
-          <Text style={styles.aboutText}>NXT Cloud v1.1.0</Text>
+          <Text style={styles.aboutText}>NXT Cloud v1.5.0</Text>
           <Text style={styles.aboutDescription}>
             A personal cloud storage solution for managing your files securely.
           </Text>
