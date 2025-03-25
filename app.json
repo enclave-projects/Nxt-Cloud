@@ -66,9 +66,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "EAS_PROJECT_ID"
+        "projectId": "6becc5be-6583-46a3-8381-b708313e8051"
       }
     },
-    "owner": "EAS-OWNER_NAME"
+    "owner": "pranjalsharma_edge"
   }
 }
