@@ -2,7 +2,7 @@
 
 A modern, secure cloud storage application built with React Native and Expo.
 
-## Version 1.9.0
+## Latest Version 1.9.0
 
 ## Features
 
@@ -16,7 +16,7 @@ A modern, secure cloud storage application built with React Native and Expo.
 - **Biometric Authentication**: Secure access with fingerprint or Face ID
 - **Dark Mode Support**: Comfortable viewing in low-light environments
 
-## New in Version 1.6.0
+## New in Version 1.9.0
 - **Enhanced Video Preview**: Better video playback experience with fullscreen support and native controls
 - **Share from Gallery**: Upload files directly from other apps using the share feature
 - **Video Recording**: Capture videos directly within the app and upload to cloud storage
