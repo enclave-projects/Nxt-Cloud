@@ -1,21 +1,22 @@
 {
   "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "preview2": {
-      "android": {
-        "gradleCommand": ":app:assembleRelease"
-      }
-    },
-    "preview3": {
-      "developmentClient": true
-    },
-    "preview4": {
+    "development": {
+      "developmentClient": true,
       "distribution": "internal"
     },
-    "production": {}
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    }
+  },
+  "cli": {
+    "version": ">= 3.0.0"
   }
 }
