@@ -12,7 +12,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 const getDisplayFileName = (key) => {
   if (!key) return 'Unknown file';
-  // Check if the key contains a UUID pattern (8-4-4-4-12 format)
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i;
   return key.replace(uuidPattern, '');
 };
@@ -28,7 +27,7 @@ const formatBytes = (bytes, decimals = 2) => {
 
 export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [files, setFiles] = useState([]);  // Will be populated from R2 storage
+  const [files, setFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [currentUpload, setCurrentUpload] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -43,9 +42,11 @@ export default function HomeScreen({ navigation }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [currentUploadController, setCurrentUploadController] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [isLoading, setIsLoading] = useState(false);
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameInput, setRenameInput] = useState('');
+  const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [sortOption, setSortOption] = useState('nameAsc');
 
   const currentPath = folderStack.length ? folderStack[folderStack.length - 1] : '';
 
@@ -54,11 +55,10 @@ export default function HomeScreen({ navigation }) {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
-        multiple: true // Enable multiple file selection
+        multiple: true
       });
 
       if (!result.canceled && result.assets) {
-        // Filter out files larger than 100MB
         const validFiles = result.assets.filter(file => file.size <= 100 * 1024 * 1024);
         const tooLargeFiles = result.assets.length - validFiles.length;
 
@@ -85,7 +85,6 @@ export default function HomeScreen({ navigation }) {
       try {
         setCurrentUpload(file.name);
         setUploadProgress(0);
-        // Create AbortController so we can cancel this upload
         const controller = new AbortController();
         setCurrentUploadController(controller);
 
@@ -95,7 +94,7 @@ export default function HomeScreen({ navigation }) {
           (progress) => {
             setUploadProgress(progress);
           },
-          controller  // Pass the controller to uploadFile
+          controller
         );
 
         await showNotification(
@@ -135,12 +134,12 @@ export default function HomeScreen({ navigation }) {
   };
 
   const fetchFiles = useCallback(async (path) => {
-    setIsLoading(true); // Show loading indicator
+    setIsLoading(true);
     try {
       const { files: filesList, folders: foldersList } = await listFiles(path);
 
       const processedFiles = filesList
-        .filter(file => file.Key) // Ensure Key is valid
+        .filter(file => file.Key)
         .map(file => ({
           id: file.Key,
           name: getDisplayFileName(file.Key.replace(path, '')),
@@ -150,12 +149,12 @@ export default function HomeScreen({ navigation }) {
         }));
 
       const processedFolders = foldersList
-        .filter(folder => folder.id) // Ensure id (Prefix) is valid
+        .filter(folder => folder.id)
         .map(folder => ({
           id: folder.id,
           name: getDisplayFileName(folder.id.replace(path, '')),
-          fileCount: folder.fileCount, // Corrected property assignment
-          totalSize: folder.totalSize, // Corrected property assignment
+          fileCount: folder.fileCount,
+          totalSize: folder.totalSize,
           lastModified: folder.lastModified,
           isFolder: true,
         }));
@@ -166,7 +165,7 @@ export default function HomeScreen({ navigation }) {
       console.error('Error fetching files:', error);
       alert('Failed to fetch files');
     } finally {
-      setIsLoading(false); // Hide loading indicator
+      setIsLoading(false);
     }
   }, []);
 
@@ -276,6 +275,11 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const handleSort = (option) => {
+    setSortOption(option);
+    setSortModalVisible(false);
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchFiles(currentPath);
@@ -294,23 +298,50 @@ export default function HomeScreen({ navigation }) {
     fetchFiles(currentPath);
   }, [currentPath, fetchFiles]);
 
-  // Add filtered data using useMemo
   const filteredData = useMemo(() => {
     const searchTerm = searchQuery.toLowerCase().trim();
-    if (!searchTerm) return [...folders, ...files];
+    let filteredItems = [];
 
-    const matchingFolders = folders.filter(folder => 
-      folder.name.toLowerCase().includes(searchTerm)
-    );
+    if (!searchTerm) {
+      filteredItems = [...folders, ...files];
+    } else {
+      const matchingFolders = folders.filter(folder => 
+        folder.name.toLowerCase().includes(searchTerm)
+      );
+      const matchingFiles = files.filter(file => 
+        file.name.toLowerCase().includes(searchTerm)
+      );
+      filteredItems = [...matchingFolders, ...matchingFiles];
+    }
 
-    const matchingFiles = files.filter(file => 
-      file.name.toLowerCase().includes(searchTerm)
-    );
+    return filteredItems.sort((a, b) => {
+      switch (sortOption) {
+        case 'nameAsc':
+          return a.name.localeCompare(b.name);
+        case 'nameDesc':
+          return b.name.localeCompare(a.name);
+        case 'dateNewest':
+          return new Date(b.lastModified || 0) - new Date(a.lastModified || 0);
+        case 'dateOldest':
+          return new Date(a.lastModified || 0) - new Date(b.lastModified || 0);
+        case 'sizeSmallest':
+          const aSize = a.isFolder ? (a.totalSize || 0) : (a.size || 0);
+          const bSize = b.isFolder ? (b.totalSize || 0) : (b.size || 0);
+          return aSize - bSize;
+        case 'sizeLargest':
+          const aSizeDesc = a.isFolder ? (a.totalSize || 0) : (a.size || 0);
+          const bSizeDesc = b.isFolder ? (b.totalSize || 0) : (b.size || 0);
+          return bSizeDesc - aSizeDesc;
+        case 'typeFolderFirst':
+          return (b.isFolder ? 1 : 0) - (a.isFolder ? 1 : 0);
+        case 'typeFileFirst':
+          return (a.isFolder ? 1 : 0) - (b.isFolder ? 1 : 0);
+        default:
+          return 0;
+      }
+    });
+  }, [folders, files, searchQuery, sortOption]);
 
-    return [...matchingFolders, ...matchingFiles];
-  }, [folders, files, searchQuery]);
-
-  // Update the searchbar section in the header
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -349,24 +380,40 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
         </View>
+      </View>
+
+      <View style={styles.actionButtonsContainer}>
         <TouchableOpacity 
-          style={[styles.headerButton, uploadProgress !== null && styles.uploadButtonDisabled]} 
+          style={[styles.actionButton, uploadProgress !== null && styles.uploadButtonDisabled]} 
           onPress={handleUpload}
           disabled={uploadProgress !== null}
         >
           <MaterialIcons name="file-upload" size={24} color={COLORS.surface} />
+          <Text style={styles.actionButtonText}>Upload</Text>
         </TouchableOpacity>
+
         <TouchableOpacity 
-          style={styles.headerButton} 
+          style={styles.actionButton} 
           onPress={handleCreateFolder}
         >
           <MaterialIcons name="create-new-folder" size={24} color={COLORS.surface} />
+          <Text style={styles.actionButtonText}>New Folder</Text>
         </TouchableOpacity>
+
         <TouchableOpacity 
-          style={styles.headerButton} 
+          style={styles.actionButton} 
+          onPress={() => setSortModalVisible(true)}
+        >
+          <MaterialIcons name="sort" size={24} color={COLORS.surface} />
+          <Text style={styles.actionButtonText}>Sort</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.actionButton} 
           onPress={() => navigation.navigate('Settings')}
         >
           <MaterialIcons name="settings" size={24} color={COLORS.surface} />
+          <Text style={styles.actionButtonText}>Settings</Text>
         </TouchableOpacity>
       </View>
 
@@ -415,8 +462,8 @@ export default function HomeScreen({ navigation }) {
           )}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
-          onRefresh={onRefresh} // <-- Added pull-to-refresh callback
-          refreshing={refreshing} // <-- Added refreshing state
+          onRefresh={onRefresh}
+          refreshing={refreshing}
         />
       )}
       
@@ -454,7 +501,6 @@ export default function HomeScreen({ navigation }) {
         </>
       )}
 
-      {/* Folder Creation Modal */}
       <Modal
         visible={folderModalVisible}
         transparent={true}
@@ -483,7 +529,6 @@ export default function HomeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Rename Modal */}
       <Modal
         visible={renameModalVisible}
         transparent={true}
@@ -511,6 +556,147 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={sortModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSortModalVisible(false)}
+      >
+        <View style={folderStyles.modalOverlay}>
+          <View style={[folderStyles.modalContainer, styles.sortModalContainer]}>
+            <Text style={folderStyles.modalTitle}>Sort Files</Text>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'nameAsc' && styles.selectedSortOption]} 
+              onPress={() => handleSort('nameAsc')}
+            >
+              <MaterialIcons 
+                name="sort-by-alpha" 
+                size={20} 
+                color={sortOption === 'nameAsc' ? COLORS.primary : COLORS.text} 
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'nameAsc' && styles.selectedSortOptionText]}>
+                Name (A to Z)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'nameDesc' && styles.selectedSortOption]} 
+              onPress={() => handleSort('nameDesc')}
+            >
+              <MaterialIcons 
+                name="sort-by-alpha" 
+                size={20} 
+                color={sortOption === 'nameDesc' ? COLORS.primary : COLORS.text} 
+                style={{transform: [{rotateX: '180deg'}]}}
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'nameDesc' && styles.selectedSortOptionText]}>
+                Name (Z to A)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'dateNewest' && styles.selectedSortOption]} 
+              onPress={() => handleSort('dateNewest')}
+            >
+              <MaterialIcons 
+                name="access-time" 
+                size={20} 
+                color={sortOption === 'dateNewest' ? COLORS.primary : COLORS.text} 
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'dateNewest' && styles.selectedSortOptionText]}>
+                Date (Newest first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'dateOldest' && styles.selectedSortOption]} 
+              onPress={() => handleSort('dateOldest')}
+            >
+              <MaterialIcons 
+                name="access-time" 
+                size={20} 
+                color={sortOption === 'dateOldest' ? COLORS.primary : COLORS.text} 
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'dateOldest' && styles.selectedSortOptionText]}>
+                Date (Oldest first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'sizeLargest' && styles.selectedSortOption]} 
+              onPress={() => handleSort('sizeLargest')}
+            >
+              <MaterialIcons 
+                name="format-size" 
+                size={20} 
+                color={sortOption === 'sizeLargest' ? COLORS.primary : COLORS.text} 
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'sizeLargest' && styles.selectedSortOptionText]}>
+                Size (Largest first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'sizeSmallest' && styles.selectedSortOption]} 
+              onPress={() => handleSort('sizeSmallest')}
+            >
+              <MaterialIcons 
+                name="format-size" 
+                size={20} 
+                color={sortOption === 'sizeSmallest' ? COLORS.primary : COLORS.text} 
+                style={{transform: [{scale: 0.8}]}}
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'sizeSmallest' && styles.selectedSortOptionText]}>
+                Size (Smallest first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'typeFolderFirst' && styles.selectedSortOption]} 
+              onPress={() => handleSort('typeFolderFirst')}
+            >
+              <MaterialIcons 
+                name="folder" 
+                size={20} 
+                color={sortOption === 'typeFolderFirst' ? COLORS.primary : COLORS.text}
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'typeFolderFirst' && styles.selectedSortOptionText]}>
+                Type (Folders first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.sortOption, sortOption === 'typeFileFirst' && styles.selectedSortOption]} 
+              onPress={() => handleSort('typeFileFirst')}
+            >
+              <MaterialIcons 
+                name="insert-drive-file" 
+                size={20} 
+                color={sortOption === 'typeFileFirst' ? COLORS.primary : COLORS.text}
+              />
+              <Text style={[styles.sortOptionText, sortOption === 'typeFileFirst' && styles.selectedSortOptionText]}>
+                Type (Files first)
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.closeSortButton} 
+              onPress={() => setSortModalVisible(false)}
+            >
+              <Text style={styles.closeSortButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <TouchableOpacity
+        style={styles.cameraButton}
+        onPress={() => navigation.navigate('Camera', { currentPath })}
+      >
+        <MaterialIcons name="camera-alt" size={24} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -666,5 +852,83 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: COLORS.textSecondary,
+  },
+  cameraButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+    paddingTop: 6,
+    justifyContent: 'space-evenly',
+    ...SHADOWS.small,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  actionButton: {
+    height: 44,
+    width: '22%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 6,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.small,
+  },
+  actionButtonText: {
+    color: COLORS.surface,
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  sortModalContainer: {
+    maxHeight: '80%',
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginVertical: 2,
+  },
+  selectedSortOption: {
+    backgroundColor: `${COLORS.primary}20`,
+  },
+  sortOptionText: {
+    fontSize: 14,
+    color: COLORS.text,
+    marginLeft: 12,
+  },
+  selectedSortOptionText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  closeSortButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  closeSortButtonText: {
+    color: COLORS.surface,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

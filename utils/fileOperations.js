@@ -240,3 +240,93 @@ export const renameFileOrFolder = async (oldKey, newKey) => {
     throw error;
   }
 };
+
+/**
+ * Processes content received from other apps via sharing
+ * @param {string} uri The shared content URI
+ * @returns {Promise<Object>} File information
+ */
+export const processSharedContent = async (uri) => {
+  try {
+    if (!uri) {
+      throw new Error('No content URI provided');
+    }
+
+    // Get file information from the URI
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists) {
+      throw new Error('File does not exist');
+    }
+
+    // Try to extract a file name from the URI
+    const uriParts = uri.split('/');
+    const fileName = uriParts[uriParts.length - 1];
+    
+    // Get the file size
+    const { size } = fileInfo;
+    
+    return {
+      uri,
+      name: fileName,
+      size,
+      type: getMimeTypeFromUri(uri),
+    };
+  } catch (error) {
+    console.error('Error processing shared content:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get MIME type from URI or file extension
+ * @param {string} uri The file URI
+ * @returns {string} The MIME type
+ */
+export const getMimeTypeFromUri = (uri) => {
+  if (!uri) return 'application/octet-stream';
+  
+  const extension = uri.split('.').pop().toLowerCase();
+  
+  const mimeTypes = {
+    // Images
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    bmp: 'image/bmp',
+    
+    // Videos
+    mp4: 'video/mp4',
+    mov: 'video/quicktime',
+    avi: 'video/x-msvideo',
+    mkv: 'video/x-matroska',
+    webm: 'video/webm',
+    
+    // Documents
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    
+    // Text
+    txt: 'text/plain',
+    html: 'text/html',
+    css: 'text/css',
+    js: 'text/javascript',
+    json: 'application/json',
+    xml: 'application/xml',
+    
+    // Archives
+    zip: 'application/zip',
+    rar: 'application/x-rar-compressed',
+    '7z': 'application/x-7z-compressed',
+    tar: 'application/x-tar',
+    gz: 'application/gzip',
+  };
+  
+  return mimeTypes[extension] || 'application/octet-stream';
+};

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nxt Cloud",
     "slug": "nxt-cloud",
-    "version": "1.5.0",
+    "version": "1.9.0",
     "orientation": "default",
     "icon": "./assets/nxt-logo-nobg.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,16 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Allow NXT Cloud to use Face ID for authentication.",
-        "NSMicrophoneUsageDescription": "This app does not require microphone access."
+        "NSMicrophoneUsageDescription": "This app does not require microphone access.",
+        "NSPhotoLibraryUsageDescription": "Allow Nxt Cloud to access your photos",
+        "NSDocumentPickerUsageDescription": "Allow Nxt Cloud to access your files",
+        "CFBundleAllowMixedLocalizations": true,
+        "LSSupportsOpeningDocumentsInPlace": true,
+        "UISupportsDocumentBrowser": true,
+        "UIFileSharingEnabled": true,
+        "NSUserActivityTypes": [
+          "com.nxtcloud.fileUpload"
+        ]
       }
     },
     "android": {
@@ -32,7 +41,45 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
       ],
-      "package": "com.enclave_projects.nxt_cloud"
+      "package": "com.enclave_projects.nxt_cloud",
+      "intentFilters": [
+        {
+          "action": "android.intent.action.SEND",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            {
+              "mimeType": "image/*"
+            },
+            {
+              "mimeType": "video/*"
+            },
+            {
+              "mimeType": "application/*"
+            },
+            {
+              "mimeType": "text/*"
+            }
+          ]
+        },
+        {
+          "action": "android.intent.action.SEND_MULTIPLE",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            {
+              "mimeType": "image/*"
+            },
+            {
+              "mimeType": "video/*"
+            },
+            {
+              "mimeType": "application/*"
+            },
+            {
+              "mimeType": "text/*"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/nxt-logo-nobg.png"
@@ -54,6 +101,20 @@
             "./assets/notification_sound.wav"
           ],
           "mode": "production"
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Nxt Cloud to access your photos",
+          "savePhotosPermission": "Allow Nxt Cloud to save photos to your library",
+          "isAccessMediaLocationEnabled": true
         }
       ]
     ],

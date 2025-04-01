@@ -1,63 +1,91 @@
 # Nxt Cloud
 
-A personal cloud storage solution built with Expo and React Native.
+A modern, secure cloud storage application built with React Native and Expo.
+
+## Version 1.9.0
 
 ## Features
-- File upload with progress tracking and cancellation
-- File management (list, delete, download, move)
-- Folder navigation
-- Device authentication and app protection (prevents screen capture when enabled)
-- Notifications integration
-- **New in v1.5.0**:
-  - Network speed test with live graph and detailed results
-  - Fixed folder navigation bugs for smoother user experience
-  - Improved overall app performance and responsiveness
-  - Enhanced security with stricter app protection and device authentication
 
-## Folder Structure
-- **/assets**  
-  Contains images and sound assets, e.g., `nxt-cloud-logo.png`, `nxt-logo-nobg.png`, `notification_sound.wav`.
-- **/components**  
-  Reusable UI components like `ProgressBar.js`, `FileActionMenu.js`, `FilePreview.js`, `StorageGraph.js`, and more.
-- **/config**  
-  Configuration files such as `r2Config.js` for Cloudflare R2 settings.
-- **/context**  
-  Global context providers like `AuthContext.js` that handle authentication and settings.
-- **/screens**  
-  Application screens including `LoginScreen.js`, `HomeScreen.js`, `SettingsScreen.js`, and (potentially) `CameraScreen.js`.
-- **/utils**  
-  Utility functions for file operations (`fileOperations.js`), notifications (`notifications.js`), network speed testing (`networkSpeed.js`), and storage statistics (`storageStats.js`).
-- **/constants**  
-  Theme and styling constants defined in `theme.js`.
-- **App.js**  
-  The main entry point that sets up navigation, global state, and applies global settings.
+- **Secure File Storage**: Store and access your files securely in the cloud
+- **Folder Organization**: Create folders and subfolders to organize your content
+- **File Operations**: Upload, download, move, and delete files easily
+- **Media Capture**: Take photos and record videos directly from the app
+- **File Sharing**: Receive files shared from other apps and upload directly to cloud
+- **File Preview**: Preview images, videos, PDFs, and text files
+- **Sorting Options**: Sort files by name, date, size, or type
+- **Biometric Authentication**: Secure access with fingerprint or Face ID
+- **Dark Mode Support**: Comfortable viewing in low-light environments
 
-## Setup
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/enclave-projects/Nxt-Cloud.git
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-   or
-   ```bash
-   yarn install
-   ```
-3. Configure any required environment variables.
-4. Start the development server with:
-   ```bash
-   expo start
-   ```
+## New in Version 1.6.0
+- **Enhanced Video Preview**: Better video playback experience with fullscreen support and native controls
+- **Share from Gallery**: Upload files directly from other apps using the share feature
+- **Video Recording**: Capture videos directly within the app and upload to cloud storage
+- **File Sorting**: Sort files by multiple criteria including name, date, size, and type
+- **Improved UI**: More compact and user-friendly interface
 
-## Build and Deployment
-Use Expo's EAS build system to build and deploy your app.
+## Technologies Used
 
-## Customization and Rebranding
-This project is open source and welcomes your customization. Anyone can rebuild this project by changing the credentials and making personalized modifications. Feel free to adjust configuration files (e.g., `config/r2Config.js`), update styling, and add or remove features to create your own version.
+- React Native
+- Expo
+- AWS S3 Compatible Storage (Cloudflare R2)
+- React Navigation
+- Expo FileSystem
+- Expo Camera & Image Picker
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- Expo CLI
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/enclave-projects/Nxt-Cloud.git
+cd nxt-cloud
+```
+
+2. Install dependencies
+```bash
+npm install
+```
+
+3. Create a `config` folder in the root directory and add your R2 configuration
+```javascript
+// r2Config.js
+export const R2_CONFIG = {
+  accessKeyId: 'YOUR_ACCESS_KEY',
+  secretAccessKey: 'YOUR_SECRET_KEY',
+  endpoint: 'YOUR_ENDPOINT',
+  region: 'auto',
+  bucket: 'YOUR_BUCKET_NAME'
+};
+```
+
+4. Start the development server
+```bash
+npm start
+```
+
+## Build
+
+To build for production:
+
+```bash
+expo build:android
+expo build:ios
+```
+
+## Privacy and Security
+
+- Files are encrypted in transit and at rest
+- Biometric authentication for secure access
+- Screen capture prevention (optional setting)
+- Automatic session timeouts
 
 ## License
-This project is licensed under the MIT License.
 
-![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/enclave-projects/Nxt-Cloud?utm_source=oss&utm_medium=github&utm_campaign=enclave-projects%2FNxt-Cloud&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+This project is licensed under the MIT License - see the LICENSE file for details.
