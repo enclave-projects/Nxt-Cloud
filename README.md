@@ -41,7 +41,7 @@ A modern, secure cloud storage application built with React Native and Expo.
 
 - Node.js (v14 or higher)
 - npm or yarn
-- Expo CLI
+- Expo CLI (v52)
 
 ### Installation
 
