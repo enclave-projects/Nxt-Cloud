@@ -29,8 +29,6 @@ A modern, secure cloud storage application built with React Native and Expo.
 - Expo
 - AWS S3 Compatible Storage (Cloudflare R2)
 - React Navigation
-- Expo FileSystem
-- Expo Camera & Image Picker
 
 ## Security Checks
 
