@@ -32,6 +32,11 @@ A modern, secure cloud storage application built with React Native and Expo.
 - Expo FileSystem
 - Expo Camera & Image Picker
 
+## Security Checks
+
+- ![image](https://github.com/user-attachments/assets/0718a294-9576-4b09-8550-85f9ab329b71)
+
+
 ## Getting Started
 
 ### Prerequisites
